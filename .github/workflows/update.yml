@@ -1,0 +1,40 @@
+name: Update dashboard
+on:
+  schedule:
+    - cron: "30 1 * * 2-6"   # 01:30 UTC Tue-Sat = after Mon-Fri US sessions are complete
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas numpy requests
+      - uses: actions/cache@v4
+        with:
+          path: nq_1m.pkl
+          key: nq-data-${{ github.run_id }}
+          restore-keys: nq-data-
+      - run: python paper_trader.py
+      - run: mkdir _site && cp dashboard.html _site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4

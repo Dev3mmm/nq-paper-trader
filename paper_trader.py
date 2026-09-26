@@ -33,15 +33,16 @@ def fetch_day(day):
     return []
 
 def update_data():
-    df=pd.read_pickle(PKL); last=df.index[-1].date()
+    df=pd.read_pickle(PKL) if os.path.exists(PKL) else None
+    last=df.index[-1].date() if df is not None else dt.date(2023,1,1)   # no cache (cloud first run) -> full download
     days=[last+dt.timedelta(n) for n in range(0,(dt.datetime.now(dt.timezone.utc).date()-last).days+1)]
     days=[d for d in days if d.weekday()<5 or d.weekday()==6]
     rows=[]
-    with ThreadPoolExecutor(8) as ex:
+    with ThreadPoolExecutor(16) as ex:
         for out in ex.map(fetch_day,days): rows+=out
     if rows:
         new=pd.DataFrame(rows,columns=["time","Open","High","Low","Close","Volume"]).set_index("time")
-        df=pd.concat([df,new]); df=df[~df.index.duplicated(keep="last")].sort_index(); df.to_pickle(PKL)
+        df=new if df is None else pd.concat([df,new]); df=df[~df.index.duplicated(keep="last")].sort_index(); df.to_pickle(PKL)
     return df
 
 def evaluate(rth_days, daily_atr, day):

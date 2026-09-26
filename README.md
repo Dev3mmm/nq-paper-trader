@@ -22,6 +22,6 @@ Forward paper test started 2026-09-25 and is counted separately on the dashboard
 - `paper_trader.py` - daily updater (downloads new data, rebuilds the dashboard)
 - `strategies.py` - the two strategies
 - `dashboard.py` + `dashboard_template.html` - dashboard generator
-- `index.html` - the published dashboard
+- `.github/workflows/update.yml` - runs daily in the cloud (GitHub Actions) and republishes the dashboard
 
 > Simulated results, not financial advice. Backtests do not guarantee future results.
