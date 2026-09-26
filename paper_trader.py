@@ -17,11 +17,13 @@ HERE=os.path.dirname(os.path.abspath(__file__)); PKL=os.path.join(HERE,"nq_1m.pk
 START=dt.date(2026,9,25)   # forward test starts here
 COST=1.0
 
+STATS={}
 def fetch_day(day):
     u=f"https://datafeed.dukascopy.com/datafeed/USATECHIDXUSD/{day.year}/{day.month-1:02d}/{day.day:02d}/BID_candles_min_1.bi5"
     for _ in range(3):
         try:
-            r=requests.get(u,timeout=30)
+            r=requests.get(u,timeout=30,headers={"User-Agent":"Mozilla/5.0"})
+            STATS[r.status_code]=STATS.get(r.status_code,0)+1
             if r.status_code==404 or (r.status_code==200 and not r.content): return []
             if r.status_code==200:
                 d=lzma.decompress(r.content); base=dt.datetime(day.year,day.month,day.day,tzinfo=dt.timezone.utc); out=[]
@@ -29,7 +31,7 @@ def fetch_day(day):
                     t,o,c,l,h,v=struct.unpack(">IIIIIf",d[i*24:(i+1)*24])
                     out.append((base+dt.timedelta(seconds=t),o/1000,h/1000,l/1000,c/1000,v))
                 return out
-        except Exception: pass
+        except Exception as e: STATS[type(e).__name__]=STATS.get(type(e).__name__,0)+1
     return []
 
 def update_data():
@@ -40,6 +42,7 @@ def update_data():
     rows=[]
     with ThreadPoolExecutor(16) as ex:
         for out in ex.map(fetch_day,days): rows+=out
+    print('download stats:',STATS,'rows:',len(rows))
     if rows:
         new=pd.DataFrame(rows,columns=["time","Open","High","Low","Close","Volume"]).set_index("time")
         df=new if df is None else pd.concat([df,new]); df=df[~df.index.duplicated(keep="last")].sort_index(); df.to_pickle(PKL)
