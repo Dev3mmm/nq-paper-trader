@@ -1,9 +1,0 @@
-name: Probe
-on: workflow_dispatch
-jobs:
-  probe:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          curl -s -m 25 -o /dev/null -w "dukascopy: %{http_code} %{size_download}B %{time_total}s\n" "https://datafeed.dukascopy.com/datafeed/USATECHIDXUSD/2026/08/15/BID_candles_min_1.bi5" || echo "dukascopy FAILED/timeout"
-          curl -s -m 25 -o /dev/null -w "yahoo NQ=F: %{http_code} %{size_download}B\n" -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?interval=1m&range=5d" || echo "yahoo FAILED"

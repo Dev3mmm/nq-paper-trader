@@ -19,8 +19,9 @@ COST=1.0
 
 STATS={}
 def fetch_day(day):
+    import time
     u=f"https://datafeed.dukascopy.com/datafeed/USATECHIDXUSD/{day.year}/{day.month-1:02d}/{day.day:02d}/BID_candles_min_1.bi5"
-    for _ in range(3):
+    for attempt in range(6):
         try:
             r=requests.get(u,timeout=30,headers={"User-Agent":"Mozilla/5.0"})
             STATS[r.status_code]=STATS.get(r.status_code,0)+1
@@ -31,18 +32,23 @@ def fetch_day(day):
                     t,o,c,l,h,v=struct.unpack(">IIIIIf",d[i*24:(i+1)*24])
                     out.append((base+dt.timedelta(seconds=t),o/1000,h/1000,l/1000,c/1000,v))
                 return out
-        except Exception as e: STATS[type(e).__name__]=STATS.get(type(e).__name__,0)+1
+            time.sleep(5*(attempt+1))          # 429 / 5xx -> back off and retry
+        except Exception as e:
+            STATS[type(e).__name__]=STATS.get(type(e).__name__,0)+1; time.sleep(3)
     return []
 
+HISTORY=os.path.join(HERE,"history","nq_1m.pkl.xz")
 def update_data():
+    if not os.path.exists(PKL) and os.path.exists(HISTORY):
+        pd.read_pickle(HISTORY).to_pickle(PKL)                      # seed from the history saved in the repo
     df=pd.read_pickle(PKL) if os.path.exists(PKL) else None
-    last=df.index[-1].date() if df is not None else dt.date(2023,1,1)   # no cache (cloud first run) -> full download
+    last=(df.index[-1].date()-dt.timedelta(days=3)) if df is not None else dt.date(2023,1,1)   # re-fetch last 3 days so no gaps
     days=[last+dt.timedelta(n) for n in range(0,(dt.datetime.now(dt.timezone.utc).date()-last).days+1)]
     days=[d for d in days if d.weekday()<5 or d.weekday()==6]
     rows=[]
-    with ThreadPoolExecutor(16) as ex:
+    with ThreadPoolExecutor(2) as ex:                               # gentle: Dukascopy rate-limits shared IPs
         for out in ex.map(fetch_day,days): rows+=out
-    print('download stats:',STATS,'rows:',len(rows))
+    print('download stats:',STATS,'rows:',len(rows),'days requested:',len(days))
     if rows:
         new=pd.DataFrame(rows,columns=["time","Open","High","Low","Close","Volume"]).set_index("time")
         df=new if df is None else pd.concat([df,new]); df=df[~df.index.duplicated(keep="last")].sort_index(); df.to_pickle(PKL)
