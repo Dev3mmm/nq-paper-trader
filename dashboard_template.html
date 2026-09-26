@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NQ Paper Trader Dashboard</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121821;--panel2:#171e2a;--line:#232c3a;--text:#e6edf3;--muted:#8b98a9;--green:#22c55e;--red:#ef4444;--blue:#4da3ff;--amber:#f5a524;--grey:#5b6778}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0}
+.sub{color:var(--muted);font-size:12px}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
+input[type=number]{width:64px}
+.wrap{padding:16px 20px;display:grid;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h3{margin:0 0 2px;font-size:14px}
+.card .desc{color:var(--muted);font-size:12px;margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.k{background:var(--panel2);border-radius:8px;padding:8px 10px}
+.k .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.k .v{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums}
+.k .s{color:var(--muted);font-size:11px}
+.pos{color:var(--green)}.neg{color:var(--red)}.mut{color:var(--muted)}
+.fwd{border-color:#2b4a7a;background:linear-gradient(180deg,#121b2b,#121821)}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:#1c3a66;color:#9cc7ff;margin-left:6px;vertical-align:middle}
+.main{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.list{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.filters{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.filters button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12px}
+.filters button.on{color:var(--text);border-color:var(--blue)}
+.rows{max-height:760px;overflow:auto}
+.row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid #1a2230;cursor:pointer}
+.row:hover{background:var(--panel2)}.row.sel{background:#1a2740}
+.row .d{font-variant-numeric:tabular-nums}.row .d small{color:var(--muted)}
+.chip{font-size:11px;min-width:58px;text-align:center;padding:2px 6px;border-radius:6px;background:#1a2230;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip.w{background:#12341f;color:var(--green)}.chip.l{background:#3a1717;color:var(--red)}
+.day h2{margin:0 0 4px;font-size:17px}
+.nav{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.nav button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer}
+.panel{margin-top:12px}
+.panel .hd{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+canvas{width:100%;height:330px;display:block;background:#0e131b;border-radius:8px;border:1px solid var(--line)}
+canvas.eq{height:260px}
+.res{font-size:13px}
+.res b{font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid #1a2230;font-size:13px}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:500;font-size:12px}
+.legend span{margin-right:14px;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.note{color:var(--muted);font-size:12px}
+.plain{font-size:15px}.plain .det{font-size:12px;color:var(--muted);margin-top:2px}
+.side{display:inline-block;font-weight:800;padding:2px 10px;border-radius:6px;letter-spacing:.04em}
+.side.buy{background:#12341f;color:var(--green)}.side.sell{background:#3a1717;color:var(--red)}
+.out{font-weight:700}
+.panel .hd{flex-direction:column;gap:4px}
+.how{margin-top:12px;background:var(--panel2);border-radius:8px;padding:10px 14px;font-size:13px}
+.how ol{margin:6px 0 0 18px;padding:0}.how li{margin:3px 0}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>NQ Paper Trader <span class="sub" id="gen"></span></h1>
+    <div class="sub">Two frozen strategies, same rules as the backtest. Prices are the Nasdaq-100 index CFD (Dukascopy), New York time.</div>
+  </div>
+  <div class="ctl">
+    <label class="sub">Contract
+      <select id="ct"><option value="2">MNQ ($2/pt)</option><option value="20">NQ ($20/pt)</option></select></label>
+    <label class="sub">Deposit $ <input type="number" id="dep" min="100" step="100" value="5000" style="width:90px"></label>
+    <label class="sub">Risk per trade % <input type="number" id="risk" min="0.1" max="10" step="0.1" value="1" style="width:60px"></label>
+  </div>
+</header>
+<div class="wrap">
+  <div class="card"><h3>How this works (in plain words)</h3>
+    <div class="desc">A rule-based &ldquo;opening breakout&rdquo; trader for Nasdaq-100 futures (NQ / MNQ). It never guesses &mdash; it follows the same rules every day.</div>
+    <ol style="margin:6px 0 0 18px;padding:0;line-height:1.6">
+      <li>The US market opens at 9:30 (New York time). For the first 15 minutes the bot just <b>watches</b> and notes the <b>highest and lowest price</b> &mdash; the shaded &ldquo;range&rdquo; on each chart.</li>
+      <li>After 9:45, if a candle <b>closes above the range</b> the bot <b>BUYS</b>; if one <b>closes below</b> the range it <b>SELLS</b>. The idea: a strong break out of the morning range often keeps going.</li>
+      <li>It only takes the trade if the breakout looks strong (big candle, decent-sized range, clear break). About <b>9 days in 10 it does nothing</b> and the page says &ldquo;NO TRADE&rdquo; and why.</li>
+      <li>Every trade has a <b>stop</b> (where it gives up with a small loss) and a <b>target</b> (where it takes profit). If neither is hit, it closes at 15:45.</li>
+      <li>Two versions run side by side: one reads <b>1-minute</b> candles, the other <b>5-minute</b> candles. Pick a deposit and risk % at the top to see what the profit would have been on your account size.</li>
+    </ol>
+    <div class="note" style="margin-top:8px"><b>Honest status:</b> the past numbers are a backtest (rules tested on old data), not live money. Since the &ldquo;forward test&rdquo; start date the results are true paper trades and are counted separately. Losing months happen. Simulated results, not financial advice.</div></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="card">
+    <div class="hd" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <h3>Running profit / loss</h3>
+      <div class="legend"><span><i class="dot" style="background:var(--blue)"></i>1-min</span><span><i class="dot" style="background:var(--amber)"></i>5-min</span><span><i class="dot" style="background:#fff"></i>Forward test start</span></div>
+    </div>
+    <canvas id="eq" class="eq"></canvas>
+  </div>
+  <div class="main">
+    <div class="list">
+      <div class="filters" id="filters"></div>
+      <div class="rows" id="rows"></div>
+    </div>
+    <div class="day" id="day"></div>
+  </div>
+  <div class="card">
+    <h3>Profit / loss by month</h3>
+    <div class="desc">Includes backtest history and, from the start date, live paper trades.</div>
+    <div style="overflow:auto"><table id="months"></table></div>
+  </div>
+  <div class="note">Backtest days replay the frozen rules on history. Days on or after the forward start date are true paper results. Position size = contracts so the stop risks the chosen % of the deposit (minimum 1 contract; sized on the starting deposit, no compounding). A trade costs 1 point (spread/slippage/commission estimate). Simulated results, not financial advice.</div>
+</div>
+<script>
+const DATA=__DATA__;
+const META=DATA.meta, START=META.start, NAMES=META.cfg;
+const KEYS=["1m","5m"], COLORS={"1m":"#4da3ff","5m":"#f5a524"};
+const byDate={}; DATA.trades.forEach(t=>{(byDate[t.date]=byDate[t.date]||{})[t.strat]=t});
+const dayMap={}; DATA.days.forEach(d=>dayMap[d.d]=d);
+const dates=DATA.days.map(d=>d.d).reverse();
+let sel=dates[0], filt="all";
+const perPt=()=>+document.getElementById("ct").value;
+const dep=()=>Math.max(1,+document.getElementById("dep").value||1);
+const riskPct=()=>Math.max(0.01,+document.getElementById("risk").value||1)/100;
+const qty=t=>{const r=t&&t.risk;return r?Math.max(1,Math.floor(dep()*riskPct()/(r*perPt()))):1};
+const usd=t=>t.pnl*perPt()*qty(t);
+const overRisk=t=>t&&t.risk&&(t.risk*perPt()>dep()*riskPct());
+const isT=t=>t&&["WIN","LOSS","TIMEOUT WIN","TIMEOUT LOSS"].includes(t.status);
+const fmt$=v=>{const r=Math.round(v);return (r<0?"-":"+")+"$"+Math.abs(r).toLocaleString()};
+const fmtP=v=>(v>=0?"+":"")+v.toFixed(1);
+const cls=v=>v>0?"pos":v<0?"neg":"mut";
+const hm=o=>{const m=570+o;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0")};
+function agg(trs){const tt=trs.filter(isT);let c=0,pk=0,dd=0;tt.forEach(t=>{c+=usd(t);pk=Math.max(pk,c);dd=Math.min(dd,c-pk)});const p=tt.map(t=>t.pnl);const w=p.filter(x=>x>0).reduce((a,b)=>a+b,0),l=-p.filter(x=>x<0).reduce((a,b)=>a+b,0);
+  return {n:p.length,win:p.length?100*p.filter(x=>x>0).length/p.length:0,pf:l?w/l:(w?99:0),net:p.reduce((a,b)=>a+b,0),usd:c,dd:dd,cons:tt.reduce((a,t)=>a+qty(t),0)/(tt.length||1)}}
+function kpi(){
+  const el=document.getElementById("kpis"); el.innerHTML="";
+  KEYS.forEach(k=>{
+    const all=DATA.trades.filter(t=>t.strat===k), fw=all.filter(t=>t.date>=START), bt=all.filter(t=>t.date<START);
+    const A=agg(bt),F=agg(fw),L=agg(bt.slice(-250));
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML=`<h3 style="color:${COLORS[k]}">${NAMES[k]}</h3><div class="desc">${k==="1m"?"1-min entries, 15-min opening range, mid stop, 1R target":"5-min entries, 15-min opening range, opposite-side stop, 1.5R target"}</div>
+    <div class="card fwd" style="margin-bottom:10px;padding:10px 12px"><div class="l mut" style="font-size:11px;text-transform:uppercase">Forward paper test since ${START} <span class="badge">LIVE</span></div>
+      <div class="grid3" style="margin-top:6px">
+        <div class="k"><div class="l">P&amp;L</div><div class="v ${cls(F.usd)}">${F.n?fmt$(F.usd):"$0"}</div><div class="s">${F.n?fmtP(F.net)+" pts · "+(100*F.usd/dep()).toFixed(1)+"%":"no trades yet"}</div></div>
+        <div class="k"><div class="l">Trades</div><div class="v">${F.n}</div><div class="s">${F.n?F.n+" closed":"waiting for signals"}</div></div>
+        <div class="k"><div class="l">Win rate</div><div class="v">${F.n?F.win.toFixed(0)+"%":"–"}</div><div class="s">${F.n?"PF "+F.pf.toFixed(2):"target "+(k==="1m"?"61%":"52%")}</div></div>
+      </div></div>
+    <div class="l mut" style="font-size:11px;text-transform:uppercase;margin-bottom:6px">Backtest (history before ${START})</div>
+    <div class="grid3">
+      <div class="k"><div class="l">P&amp;L</div><div class="v ${cls(A.usd)}">${fmt$(A.usd)}</div><div class="s">${(100*A.usd/dep()).toFixed(0)}% on $${dep().toLocaleString()} · ${fmtP(A.net)} pts</div></div>
+      <div class="k"><div class="l">Win rate</div><div class="v">${A.win.toFixed(0)}%</div><div class="s">${A.n} trades</div></div>
+      <div class="k"><div class="l">Profit factor</div><div class="v">${A.pf.toFixed(2)}</div><div class="s">last 250 sessions: ${L.win.toFixed(0)}% / ${L.pf.toFixed(2)}</div></div>
+    </div><div class="note" style="margin-top:8px">Worst drawdown: <b class="neg">${fmt$(A.dd)}</b> (${(100*A.dd/dep()).toFixed(1)}% of deposit) · avg size ${A.cons.toFixed(1)} contract(s)</div>`;
+    el.appendChild(card)});
+}
+function chipHTML(t){
+  if(!t) return `<span class="chip">–</span>`;
+  if(isT(t)) return `<span class="chip ${t.pnl>0?"w":"l"}">${fmtP(t.pnl)}</span>`;
+  return `<span class="chip">${t.status==="SKIPPED"?"skip":"none"}</span>`;
+}
+function list(){
+  const rows=document.getElementById("rows");rows.innerHTML="";
+  const wk=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  dates.forEach(d=>{
+    const T=byDate[d]||{}, a=T["1m"], b=T["5m"];
+    const traded=isT(a)||isT(b), win=(isT(a)&&a.pnl>0)||(isT(b)&&b.pnl>0), loss=(isT(a)&&a.pnl<=0)||(isT(b)&&b.pnl<=0);
+    if(filt==="trades"&&!traded)return; if(filt==="wins"&&!win)return; if(filt==="losses"&&!loss)return; if(filt==="fwd"&&d<START)return;
+    const r=document.createElement("div");r.className="row"+(d===sel?" sel":"");
+    const w=wk[new Date(d+"T12:00:00").getDay()];
+    r.innerHTML=`<div class="d">${d} <small>${w}</small>${d>=START?'<span class="badge">LIVE</span>':""}</div>${chipHTML(a)}${chipHTML(b)}`;
+    r.onclick=()=>{sel=d;list();day()};rows.appendChild(r)});
+}
+function filters(){
+  const f=document.getElementById("filters");
+  [["all","All days"],["trades","Trades only"],["wins","Wins"],["losses","Losses"],["fwd","Forward"]].forEach(([k,l])=>{
+    const b=document.createElement("button");b.textContent=l;b.className=filt===k?"on":"";b.onclick=()=>{filt=k;filters();list()};f.appendChild(b)});
+  f.insertAdjacentHTML("beforeend",'<span class="note" style="width:100%">Chips: 1-min · 5-min, pts</span>');
+}
+function resultText(t,k){
+  if(!t) return `<span class="mut">No data</span>`;
+  const side=t.dir==="LONG"?"BUY":t.dir==="SHORT"?"SELL":"";
+  const sc=t.dir==="LONG"?"buy":"sell";
+  if(isT(t)){const win=t.pnl>0;
+    return `<div class="plain"><span class="side ${sc}">${side}</span> <b>at ${hm(t.entry_i)} @ ${t.entry.toFixed(1)}</b> &rarr; <span class="out ${win?"pos":"neg"}">${win?"WIN":"LOSS"} ${fmtP(t.pnl)} pts &times; ${qty(t)} contract${qty(t)>1?"s":""} = ${fmt$(usd(t))}</span>
+    <div class="det">${overRisk(t)?"<span class='neg'>Deposit too small: 1 contract risks more than "+(riskPct()*100).toFixed(1)+"%.</span> ":""}${side==="BUY"?"Bought":"Sold"} when price closed ${side==="BUY"?"above":"below"} the 9:30-9:45 range. Stop ${t.stop.toFixed(1)} · Target ${t.target.toFixed(1)} · ${t.status.startsWith("TIMEOUT")?"closed at 15:45 @ ":(win?"target hit @ ":"stop hit @ ")}${t.exit.toFixed(1)} (${hm(t.exit_i)})</div></div>`}
+  if(t.status==="SKIPPED") return `<div class="plain"><span class="out mut">NO TRADE</span> <span class="mut">price broke ${t.dir==="LONG"?"UP (would have been a BUY)":"DOWN (would have been a SELL)"} at ${hm(t.entry_i)}, but the filters rejected it: ${t.why}</span></div>`;
+  return `<div class="plain"><span class="out mut">NO TRADE</span> <span class="mut">${t.status==="no breakout"?"price never broke out of the opening range":t.status}</span></div>`;
+}
+function day(){
+  const D=dayMap[sel], T=byDate[sel]||{}, el=document.getElementById("day");
+  const wk=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date(sel+"T12:00:00").getDay()];
+  const tot=KEYS.reduce((s,k)=>s+(isT(T[k])?usd(T[k]):0),0);
+  const i=dates.indexOf(sel);
+  let h=`<div class="card"><div class="nav"><button id="nx">◀ Newer</button><button id="pv">Older ▶</button>
+    <h2 style="margin:0">${wk} ${sel}${sel>=START?'<span class="badge">LIVE FORWARD</span>':""}</h2>
+    <span style="margin-left:auto" class="${cls(tot)}"><b>Day total ${tot?fmt$(tot):"$0"}</b> <span class="mut">(both strategies)</span></span></div>`;
+  KEYS.forEach(k=>{
+    h+=`<div class="panel"><div class="hd"><b style="color:${COLORS[k]}">${NAMES[k]} &middot; ${k==="1m"?"1-minute chart":"5-minute chart"}</b><span class="res">${resultText(T[k],k)}</span></div><canvas id="c${k}"></canvas></div>`});
+  h+=`<div class="how"><b>How the bot enters</b><ol><li>At 9:45 NY time it marks the <b>high and low of the first 15 minutes</b> (the shaded band).</li><li>The first candle that <b>closes above the high = BUY</b>; the first that <b>closes below the low = SELL</b>. The entry is that candle's closing price (blue triangle).</li><li>It only takes the trade if the breakout is strong enough (filters). Otherwise: <b>NO TRADE</b>.</li><li>The trade ends at the <span class="neg">stop</span>, the <span class="pos">target</span>, or 15:45 &mdash; whichever comes first. The 1-min and 5-min versions use different filters and stop/target sizes, so they can differ on the same day.</li></ol></div>`;
+  h+=`<div class="note" style="margin-top:8px">Shaded band = 9:30–9:45 opening range. Blue triangle = BUY/SELL entry, dashed red = stop, dashed green = target, ◆ = where the trade ended. Grey hollow triangle = breakout the filters rejected (no trade).</div></div>`;
+  el.innerHTML=h;
+  document.getElementById("nx").onclick=()=>{if(i>0){sel=dates[i-1];list();day()}};
+  document.getElementById("pv").onclick=()=>{if(i<dates.length-1){sel=dates[i+1];list();day()}};
+  KEYS.forEach(k=>chart(document.getElementById("c"+k),D,k==="1m"?1:5,T[k],k));
+}
+function bars(D,step){
+  const o=D.o,out=[];
+  for(let s=0;s<390;s+=step){
+    const g=[];for(let j=0;j<D.m.length;j++){if(D.m[j]>=s&&D.m[j]<s+step)g.push(D.b[j])}
+    if(!g.length)continue;
+    out.push({t:s,o:o+g[0][0]/10,h:o+Math.max(...g.map(x=>x[1]))/10,l:o+Math.min(...g.map(x=>x[2]))/10,c:o+g[g.length-1][3]/10});
+  }return out;
+}
+function chart(cv,D,step,t,key){
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
+  const x=cv.getContext("2d");x.scale(dpr,dpr);x.clearRect(0,0,W,H);
+  if(!D){x.fillStyle="#8b98a9";x.fillText("No session data",20,30);return}
+  const B=bars(D,step);let lo=Math.min(...B.map(b=>b.l)),hi=Math.max(...B.map(b=>b.h));
+  const lv=[];if(t){["range_hi","range_lo","stop","target","entry","exit"].forEach(f=>{if(t[f]!=null)lv.push(t[f])})}
+  if(lv.length){lo=Math.min(lo,...lv);hi=Math.max(hi,...lv)} const pad=(hi-lo)*0.06;lo-=pad;hi+=pad;
+  const L=58,R=14,T=12,Bt=26,pw=W-L-R,ph=H-T-Bt;
+  const X=m=>L+(m/390)*pw,Y=p=>T+(hi-p)/(hi-lo)*ph;
+  x.font="11px system-ui";x.strokeStyle="#1a2230";x.fillStyle="#8b98a9";
+  for(let i=0;i<=5;i++){const p=lo+(hi-lo)*i/5,y=Y(p);x.beginPath();x.moveTo(L,y);x.lineTo(W-R,y);x.stroke();x.textAlign="right";x.fillText(p.toFixed(0),L-6,y+4)}
+  for(let m=0;m<=390;m+=60){const xx=X(m);x.beginPath();x.moveTo(xx,T);x.lineTo(xx,H-Bt);x.stroke();x.textAlign="center";x.fillText(hm(m),xx,H-8)}
+  if(t&&t.range_hi!=null){x.fillStyle="rgba(77,163,255,.10)";x.fillRect(X(0),Y(t.range_hi),X(15)-X(0),Y(t.range_lo)-Y(t.range_hi));
+    x.strokeStyle="rgba(77,163,255,.55)";x.setLineDash([4,4]);[t.range_hi,t.range_lo].forEach(p=>{x.beginPath();x.moveTo(X(0),Y(p));x.lineTo(W-R,Y(p));x.stroke()});x.setLineDash([])}
+  const bw=Math.max(1,pw/(390/step)*0.7);
+  B.forEach(b=>{const up=b.c>=b.o,c=up?"#22c55e":"#ef4444",xc=X(b.t+step/2);x.strokeStyle=c;x.fillStyle=c;
+    x.beginPath();x.moveTo(xc,Y(b.h));x.lineTo(xc,Y(b.l));x.stroke();const y1=Y(Math.max(b.o,b.c)),y2=Y(Math.min(b.o,b.c));x.fillRect(xc-bw/2,y1,bw,Math.max(1,y2-y1))});
+  if(t&&t.entry_i!=null&&t.entry!=null){
+    const ex=X(t.entry_i+step/2),ey=Y(t.entry),traded=isT(t),dirUp=t.dir==="LONG";
+    const tri=(cx,cy,up,fill,col)=>{x.beginPath();const s=8;if(up){x.moveTo(cx,cy-s);x.lineTo(cx-s,cy+s);x.lineTo(cx+s,cy+s)}else{x.moveTo(cx,cy+s);x.lineTo(cx-s,cy-s);x.lineTo(cx+s,cy-s)}x.closePath();x.lineWidth=2;x.strokeStyle=col;if(fill){x.fillStyle=col;x.fill()}x.stroke();x.lineWidth=1};
+    if(traded){
+      const endx=X((t.exit_i!=null?t.exit_i:389)+step/2);
+      x.setLineDash([6,4]);x.strokeStyle="#ef4444";x.beginPath();x.moveTo(ex,Y(t.stop));x.lineTo(endx,Y(t.stop));x.stroke();
+      x.strokeStyle="#22c55e";x.beginPath();x.moveTo(ex,Y(t.target));x.lineTo(endx,Y(t.target));x.stroke();x.setLineDash([]);
+      x.fillStyle="#ef4444";x.textAlign="left";x.fillText("stop "+t.stop.toFixed(0),endx+4,Y(t.stop)+4);x.fillStyle="#22c55e";x.fillText("target "+t.target.toFixed(0),endx+4,Y(t.target)+4);
+      tri(ex,ey+(dirUp?14:-14),dirUp,true,"#4da3ff");x.fillStyle="#4da3ff";x.font="bold 12px system-ui";x.textAlign="left";x.fillText(dirUp?"BUY":"SELL",ex+12,ey+(dirUp?18:-10));x.font="11px system-ui";
+      const xx=X(t.exit_i+step/2),yy=Y(t.exit),col=t.pnl>0?"#22c55e":"#ef4444";
+      x.fillStyle=col;x.beginPath();x.moveTo(xx,yy-7);x.lineTo(xx+7,yy);x.lineTo(xx,yy+7);x.lineTo(xx-7,yy);x.closePath();x.fill();
+      x.fillStyle=col;x.font="bold 12px system-ui";x.textAlign="left";x.fillText(fmtP(t.pnl)+" pts",Math.min(xx+10,W-90),yy-10);x.font="11px system-ui";
+    }else tri(ex,ey+(dirUp?14:-14),dirUp,false,"#8b98a9");
+  }
+  cv.onmousemove=e=>{const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+    const m=(mx-L)/pw*390;const b=B.find(b=>m>=b.t&&m<b.t+step);cv.title=b?`${hm(b.t)}  O ${b.o.toFixed(1)}  H ${b.h.toFixed(1)}  L ${b.l.toFixed(1)}  C ${b.c.toFixed(1)}`:""};
+}
+function equity(){
+  const cv=document.getElementById("eq"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
+  const x=cv.getContext("2d");x.scale(dpr,dpr);x.clearRect(0,0,W,H);
+  const ds=DATA.days.map(d=>d.d);const series={};
+  KEYS.forEach(k=>{let c=0;series[k]=ds.map(d=>{const t=(byDate[d]||{})[k];if(isT(t))c+=usd(t);return c})});
+  const all=[].concat(...KEYS.map(k=>series[k]));let lo=Math.min(0,...all),hi=Math.max(0,...all);const pad=(hi-lo)*0.08||10;lo-=pad;hi+=pad;
+  const L=64,R=14,T=10,Bt=24,pw=W-L-R,ph=H-T-Bt,n=ds.length;const X=i=>L+i/(n-1)*pw,Y=v=>T+(hi-v)/(hi-lo)*ph;
+  x.font="11px system-ui";x.fillStyle="#8b98a9";x.strokeStyle="#1a2230";
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);x.beginPath();x.moveTo(L,y);x.lineTo(W-R,y);x.stroke();x.textAlign="right";x.fillText(fmt$(v),L-6,y+4)}
+  x.strokeStyle="#3a4557";x.beginPath();x.moveTo(L,Y(0));x.lineTo(W-R,Y(0));x.stroke();
+  let last="";ds.forEach((d,i)=>{const y=d.slice(0,7);if(y!==last&&d.slice(5,7)%3===1){last=y;x.textAlign="center";x.fillStyle="#8b98a9";x.fillText(y,X(i),H-8)}});
+  KEYS.forEach(k=>{x.strokeStyle=COLORS[k];x.lineWidth=2;x.beginPath();series[k].forEach((v,i)=>{i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v))});x.stroke();x.lineWidth=1});
+  const fi=ds.findIndex(d=>d>=START);if(fi>=0){x.strokeStyle="#fff";x.setLineDash([4,4]);x.beginPath();x.moveTo(X(fi),T);x.lineTo(X(fi),H-Bt);x.stroke();x.setLineDash([]);x.fillStyle="#fff";x.textAlign="right";x.fillText("forward test →",X(fi)-4,T+12)}
+}
+function months(){
+  const t=document.getElementById("months"),rows={};
+  DATA.trades.filter(isT).forEach(r=>{const m=r.date.slice(0,7);(rows[m]=rows[m]||{"1m":0,"5m":0,n1:0,n5:0});rows[m][r.strat]+=usd(r);rows[m]["n"+r.strat.slice(0,1)]++});
+  const ks=Object.keys(rows).sort().reverse();
+  t.innerHTML=`<tr><th>Month</th><th>1-min P&amp;L</th><th>trades</th><th>5-min P&amp;L</th><th>trades</th><th>Total</th></tr>`+ks.map(m=>{const r=rows[m],tot=r["1m"]+r["5m"];
+    return `<tr><td>${m}</td><td class="${cls(r["1m"])}">${fmt$(r["1m"])}</td><td>${r.n1}</td><td class="${cls(r["5m"])}">${fmt$(r["5m"])}</td><td>${r.n5}</td><td class="${cls(tot)}"><b>${fmt$(tot)}</b></td></tr>`}).join("");
+}
+function all(){kpi();equity();months();list();day()}
+document.getElementById("gen").textContent="· updated "+META.generated+" · last session "+dates[0];
+document.getElementById("ct").onchange=all;document.getElementById("dep").oninput=all;document.getElementById("risk").oninput=all;
+window.addEventListener("resize",()=>{equity();day()});
+filters();all();
+</script>
+</body>
+</html>
